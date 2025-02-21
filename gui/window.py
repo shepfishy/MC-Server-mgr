@@ -1,7 +1,7 @@
 import requests
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QDialog,
                             QScrollArea, QLabel, QPushButton, QHBoxLayout,
-                            QTextEdit, QSplitter, QFileDialog)
+                            QTextEdit, QSplitter, QFileDialog,)
 from PyQt5.QtCore import Qt, QProcess
 import os
 
