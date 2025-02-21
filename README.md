@@ -12,7 +12,8 @@ max-players=20
 view-distance=10
 ```
 
-**Tested with openjdk-21 on Zorin OS 17.2**
+**Tested with openjdk-21 on Zorin OS 17.2 amd Windows 10 Home 22H2**
+
 **Supports all Fabric, Paper, and Vanilla versions Minecraft**
 
 ### To do:
