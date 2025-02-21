@@ -507,11 +507,21 @@ class ServerControlPanel(QDialog):
         """Find latest installed Java version path"""
         try:
             # Check common Java install locations
-            java_paths = [
-                "/usr/lib/jvm",
-                "/usr/java",
-                "/opt/java"
-            ]
+            java_paths = []
+            
+            if os.name == 'nt':  # Windows
+                java_paths.extend([
+                    "C:\\Program Files\\Java",
+                    "C:\\Program Files (x86)\\Java",
+                    os.path.join(os.getenv('LOCALAPPDATA', ''), "Programs\\Java"),
+                    os.path.join(os.getenv('PROGRAMDATA', ''), "Java")
+                ])
+            else:  # Linux/Unix
+                java_paths.extend([
+                    "/usr/lib/jvm",
+                    "/usr/java",
+                    "/opt/java"
+                ])
             
             latest_version = None
             java_path = None
@@ -525,22 +535,23 @@ class ServerControlPanel(QDialog):
                     if not os.path.isdir(full_path):
                         continue
                         
-                    # Check if directory contains java binary
-                    if os.path.exists(os.path.join(full_path, "bin/java")):
-                        version_str = item.replace("java-", "").replace("openjdk-", "")
+                    # Check for java binary based on OS
+                    java_bin = "bin\\java.exe" if os.name == 'nt' else "bin/java"
+                    if os.path.exists(os.path.join(full_path, java_bin)):
+                        version_str = item.replace("java-", "").replace("openjdk-", "").replace("jdk", "")
                         try:
                             version = tuple(map(int, version_str.split(".")[:2]))
                             if not latest_version or version > latest_version:
                                 latest_version = version
-                                java_path = os.path.join(full_path, "bin/java")
+                                java_path = os.path.join(full_path, java_bin)
                         except ValueError:
                             continue
             
-            return java_path if java_path else "java"
+            return java_path if java_path else ("java.exe" if os.name == 'nt' else "java")
             
         except Exception as e:
             self.console.append(f"Error finding Java: {str(e)}")
-            return "java"
+            return "java.exe" if os.name == 'nt' else "java"
 
     def toggle_server(self):
         if not self.server_running:
