@@ -1,4 +1,4 @@
-# MC-Server-mgr 0.9
+# MC-Server-mgr 1.0
 <img src="logo/complete.svg" width="250"/>
 
 ### A python Qt5 application to manage, start and customise local minecraft servers
