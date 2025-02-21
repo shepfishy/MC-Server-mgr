@@ -1,7 +1,7 @@
 import requests
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QDialog,
                             QScrollArea, QLabel, QPushButton, QHBoxLayout,
-                            QTextEdit, QSplitter, QFileDialog,)
+                            QTextEdit, QSplitter, QFileDialog, QSlider)
 from PyQt5.QtCore import Qt, QProcess
 import os
 
@@ -481,6 +481,27 @@ class ServerControlPanel(QDialog):
         
         layout.addLayout(button_layout)
         
+        # Add memory slider
+        memory_layout = QHBoxLayout()
+        memory_label = QLabel("Memory (GB):")
+        memory_label.setStyleSheet("color: white;")
+        self.memory_slider = QSlider(Qt.Horizontal)
+        self.memory_slider.setMinimum(1)
+        self.memory_slider.setMaximum(32)
+        self.memory_slider.setValue(2)  # Default 2GB
+        self.memory_slider.setTickPosition(QSlider.TicksBelow)
+        self.memory_slider.setTickInterval(1)
+        self.memory_value = QLabel("2")
+        self.memory_value.setStyleSheet("color: white;")
+        self.memory_slider.valueChanged.connect(self.update_memory_label)
+        
+        memory_layout.addWidget(memory_label)
+        memory_layout.addWidget(self.memory_slider)
+        memory_layout.addWidget(self.memory_value)
+        
+        # Add memory layout above console
+        layout.addLayout(memory_layout)
+        
         # Server console
         self.console = QTextEdit()
         self.console.setReadOnly(True)
@@ -553,6 +574,9 @@ class ServerControlPanel(QDialog):
             self.console.append(f"Error finding Java: {str(e)}")
             return "java.exe" if os.name == 'nt' else "java"
 
+    def update_memory_label(self):
+        self.memory_value.setText(str(self.memory_slider.value()))
+    
     def toggle_server(self):
         if not self.server_running:
             # Find Java path
@@ -570,7 +594,8 @@ class ServerControlPanel(QDialog):
             """)
             self.power_btn.setText("⏹ Stop")
             
-            java_cmd = ["-Xmx2G", "-jar", "server.jar", "nogui"]
+            memory = self.memory_slider.value()
+            java_cmd = [f"-Xmx{memory}G", "-jar", "server.jar", "nogui"]
             self.process.setWorkingDirectory(self.server_path)
             self.process.start(java_path, java_cmd)
             self.server_running = True

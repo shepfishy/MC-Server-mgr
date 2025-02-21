@@ -13,7 +13,6 @@ view-distance=10
 ```
 
 **Tested with openjdk-21 on Zorin OS 17.2**
-
 **Supports all Fabric, Paper, and Vanilla versions Minecraft**
 
 ### To do:
@@ -22,6 +21,7 @@ view-distance=10
 - [X] ...
 - [X] ....
 - [x] Logic to find and use lastest java version installed when executing the jar file
-- [ ] Remake the code that handles launching the jar file to allow for variable memory allocation
+- [x] Remake the code that handles launching the jar file to allow for variable memory allocation
+- [x] Make windows version
 
 # When using this application please follow the [Minecraft Eula](https://www.minecraft.net/en-us/eula) (End user liscense agreement)
