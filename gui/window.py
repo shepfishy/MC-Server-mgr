@@ -1,7 +1,121 @@
+import requests
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QDialog,
                             QScrollArea, QLabel, QPushButton, QHBoxLayout)
 from PyQt5.QtCore import Qt
 import os
+
+class FabricVersionDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Select Fabric Version")
+        self.setFixedSize(400, 400)
+        self.setStyleSheet("background-color: #2b2b2b;")
+        
+        self.layout = QVBoxLayout()
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setStyleSheet("QScrollArea { border: none; }")
+        
+        self.container = QWidget()
+        self.version_layout = QVBoxLayout(self.container)
+        self.scroll.setWidget(self.container)
+        self.layout.addWidget(self.scroll)
+        self.setLayout(self.layout)
+        
+        self.button_style = """
+            QPushButton {
+                background-color: #3b3b3b;
+                color: white;
+                border: none;
+                padding: 10px;
+                min-width: 200px;
+                margin: 5px;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #4b4b4b;
+            }
+        """
+        
+        self.fetch_minecraft_versions()
+    
+    def fetch_minecraft_versions(self):
+        try:
+            response = requests.get("https://meta.fabricmc.net/v2/versions/game")
+            versions = response.json()
+            
+            for version in versions:
+                if version.get("stable"):  # Only show stable versions
+                    btn = QPushButton(version["version"])
+                    btn.setStyleSheet(self.button_style)
+                    btn.clicked.connect(lambda checked, v=version["version"]: 
+                                      self.show_loader_versions(v))
+                    self.version_layout.addWidget(btn)
+        except Exception as e:
+            error_label = QLabel(f"Error fetching versions: {str(e)}")
+            error_label.setStyleSheet("color: red;")
+            self.version_layout.addWidget(error_label)
+
+    def show_loader_versions(self, minecraft_version):
+        try:
+            response = requests.get(f"https://meta.fabricmc.net/v2/versions/loader/{minecraft_version}")
+            versions = response.json()
+            
+            # Clear previous widgets
+            for i in reversed(range(self.version_layout.count())): 
+                self.version_layout.itemAt(i).widget().deleteLater()
+            
+            # Add back button
+            back_btn = QPushButton("← Back to Minecraft Versions")
+            back_btn.setStyleSheet(self.button_style)
+            back_btn.clicked.connect(self.fetch_minecraft_versions)
+            self.version_layout.addWidget(back_btn)
+            
+            for version in versions:
+                loader_version = version["loader"]["version"]
+                btn = QPushButton(f"Loader {loader_version}")
+                btn.setStyleSheet(self.button_style)
+                btn.clicked.connect(lambda checked, mv=minecraft_version, lv=loader_version: 
+                                  self.show_installer_versions(mv, lv))
+                self.version_layout.addWidget(btn)
+        except Exception as e:
+            error_label = QLabel(f"Error fetching loader versions: {str(e)}")
+            error_label.setStyleSheet("color: red;")
+            self.version_layout.addWidget(error_label)
+
+    def show_installer_versions(self, minecraft_version, loader_version):
+        try:
+            response = requests.get("https://meta.fabricmc.net/v2/versions/installer")
+            versions = response.json()
+            
+            # Clear previous widgets
+            for i in reversed(range(self.version_layout.count())): 
+                self.version_layout.itemAt(i).widget().deleteLater()
+            
+            # Add back button
+            back_btn = QPushButton("← Back to Loader Versions")
+            back_btn.setStyleSheet(self.button_style)
+            back_btn.clicked.connect(lambda: self.show_loader_versions(minecraft_version))
+            self.version_layout.addWidget(back_btn)
+            
+            for version in versions:
+                if version.get("stable"):  # Only show stable versions
+                    btn = QPushButton(f"Installer {version['version']}")
+                    btn.setStyleSheet(self.button_style)
+                    btn.clicked.connect(lambda checked, mv=minecraft_version, 
+                                      lv=loader_version, iv=version["version"]: 
+                                      self.create_server(mv, lv, iv))
+                    self.version_layout.addWidget(btn)
+        except Exception as e:
+            error_label = QLabel(f"Error fetching installer versions: {str(e)}")
+            error_label.setStyleSheet("color: red;")
+            self.version_layout.addWidget(error_label)
+
+    def create_server(self, minecraft_version, loader_version, installer_version):
+        # TODO: Implement server creation
+        print(f"Creating server with:\nMinecraft: {minecraft_version}\n"
+              f"Loader: {loader_version}\nInstaller: {installer_version}")
+        self.accept()
 
 class ServerTypeDialog(QDialog):
     def __init__(self, parent=None):
@@ -26,12 +140,22 @@ class ServerTypeDialog(QDialog):
             }
         """
         
-        for server_type in ["Fabric", "Paper", "Vanilla"]:
+        # Modify Fabric button to open FabricVersionDialog
+        fabric_btn = QPushButton("Fabric")
+        fabric_btn.setStyleSheet(button_style)  # Use existing style
+        fabric_btn.clicked.connect(self.show_fabric_dialog)
+        layout.addWidget(fabric_btn)
+        
+        for server_type in ["Paper", "Vanilla"]:
             btn = QPushButton(server_type)
             btn.setStyleSheet(button_style)
             layout.addWidget(btn)
             
         self.setLayout(layout)
+
+    def show_fabric_dialog(self):
+        dialog = FabricVersionDialog(self)
+        dialog.exec_()
 
 class MainWindow(QMainWindow):
     def __init__(self):
