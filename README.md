@@ -13,6 +13,7 @@ view-distance=10
 ```
 
 **Tested with openjdk-21 on Zorin OS 17.2**
+
 **Supports all Fabric, Paper, and Vanilla versions Minecraft**
 
 ### To do:
