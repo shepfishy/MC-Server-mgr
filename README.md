@@ -3,6 +3,13 @@
 
 ### A python Qt5 application to manage, start and customise local minecraft servers
 
+Usage:
+'''
+pip install -r /path/to/requirements.txt
+ (apt/dnf/...) install openjdk-21*
+python3 app.py
+'''
+
 On server creation with the tool. You can click on the "⚙ Config" button to open ```server.properties``` before starting the server.
 
 ```
