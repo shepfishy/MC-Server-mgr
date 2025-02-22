@@ -1,4 +1,4 @@
-# MC-Server-mgr 1.0
+# MC-Server-mgr 1.0 (indev)
 <img src="logo/complete.svg" width="250"/>
 
 ### A Windows and Linux cross-compatible, python Qt5 application to manage, start and customise local Minecraft servers
