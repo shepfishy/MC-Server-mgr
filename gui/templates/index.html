@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minecraft Server Status</title>
+    <style>
+        body {
+            background: #212121;
+            color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .status-card {
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px 0;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+        .status-running {
+            color: #4caf50;
+        }
+        .status-stopped {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>Server Status</h1>
+    <div class="status-card">
+        <div class="metric">
+            <span>Status:</span>
+            <span id="status"></span>
+        </div>
+        <div class="metric">
+            <span>CPU Usage:</span>
+            <span id="cpu"></span>
+        </div>
+        <div class="metric">
+            <span>Memory Usage:</span>
+            <span id="memory"></span>
+        </div>
+    </div>
+
+    <script>
+        function updateStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('status').textContent = data.status;
+                    document.getElementById('status').className = 
+                        data.status === 'running' ? 'status-running' : 'status-stopped';
+                    document.getElementById('cpu').textContent = data.cpu || 'N/A';
+                    document.getElementById('memory').textContent = data.memory || 'N/A';
+                });
+        }
+        
+        setInterval(updateStatus, 1000);
+        updateStatus();
+    </script>
+</body>
+</html>

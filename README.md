@@ -24,5 +24,7 @@ view-distance=10
 - [x] Logic to find and use lastest java version installed when executing the jar file
 - [x] Remake the code that handles launching the jar file to allow for variable memory allocation
 - [x] Make windows version
-
+- [ ] Add modrinth support
+- [ ] Add web ui
+ 
 # When using this application please follow the [Minecraft Eula](https://www.minecraft.net/en-us/eula) (End user liscense agreement)

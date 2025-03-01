@@ -1,21 +1,137 @@
 import requests
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QDialog,
                             QScrollArea, QLabel, QPushButton, QHBoxLayout,
-                            QTextEdit, QSplitter, QFileDialog, QSlider)
+                            QTextEdit, QSplitter, QFileDialog, QSlider, QLineEdit, QMessageBox)
 from PyQt5.QtCore import Qt, QProcess
+from PyQt5.QtGui import QPalette, QBrush, QPixmap
 import os
+import psutil
+# Add this import line for WebUIManager
+from gui.webui import WebUIManager
+
+class Styles:
+    # Background with SVG support
+    @staticmethod
+    def set_background_image(widget, image_path):
+        if image_path.lower().endswith('.svg'):
+            palette = QPalette()
+            pixmap = QPixmap(image_path)
+            brush = QBrush(pixmap)
+            palette.setBrush(QPalette.Window, brush)
+            widget.setAutoFillBackground(True)
+            widget.setPalette(palette)
+        else:
+            widget.setStyleSheet(f"background-image: url({image_path}); background-repeat: no-repeat; background-position: center; background-size: cover;")
+    
+    BACKGROUND = """
+        background-color: #212121;
+        color: #f0f0f0;
+    """
+    
+    BUTTON = """
+        QPushButton {
+            background-color: #2d2d2d;
+            color: #f0f0f0;
+            border: 1px solid #444444;
+            border-radius: 4px;
+            padding: 12px;
+            min-width: 200px;
+            margin: 5px;
+            text-align: left;
+            font-weight: bold;
+        }
+        QPushButton:hover {
+            background-color: #3a3a3a;
+            border-color: #666666;
+        }
+        QPushButton:pressed {
+            background-color: #1e1e1e;
+        }
+    """
+    
+    ACTION_BUTTON = """
+        QPushButton {
+            background-color: #388E3C;
+            color: white;
+            border: 1px solid #2E7D32;
+            border-radius: 4px;
+            padding: 12px;
+            min-width: 100px;
+            margin: 5px;
+            font-weight: bold;
+        }
+        QPushButton:hover {
+            background-color: #43A047;
+        }
+        QPushButton:pressed {
+            background-color: #2E7D32;
+        }
+    """
+    
+    STOP_BUTTON = """
+        QPushButton {
+            background-color: #f44336;
+            color: white;
+            border: 1px solid #d32f2f;
+            padding: 10px;
+            min-width: 100px;
+        }
+        QPushButton:hover {
+            background-color: #d32f2f;
+        }
+    """
+    
+    CONFIG_BUTTON = """
+        QPushButton {
+            background-color: #3b3b3b;
+            color: white;
+            border: 1px solid #555555;
+            padding: 10px;
+            min-width: 100px;
+        }
+        QPushButton:hover {
+            background-color: #4b4b4b;
+        }
+    """
+    
+    CONSOLE = """
+        QTextEdit {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: none;
+            font-family: monospace;
+        }
+    """
+    
+    SCROLL_AREA = "QScrollArea { border: none; }"
+    
+    LABEL = "color: white;"
+    ERROR_LABEL = "color: red;"
+    
+    SVG_BUTTON = """
+        QPushButton {
+            background-color: transparent;
+            border: none;
+            padding: 10px;
+            min-width: 100px;
+            margin: 5px;
+        }
+        QPushButton:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+    """
 
 class FabricVersionDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Select Fabric Version")
         self.setFixedSize(400, 400)
-        self.setStyleSheet("background-color: #2b2b2b;")
+        self.setStyleSheet(Styles.BACKGROUND)
         
         self.layout = QVBoxLayout()
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
-        self.scroll.setStyleSheet("QScrollArea { border: none; }")
+        self.scroll.setStyleSheet(Styles.SCROLL_AREA)
         
         self.container = QWidget()
         self.version_layout = QVBoxLayout(self.container)
@@ -23,20 +139,7 @@ class FabricVersionDialog(QDialog):
         self.layout.addWidget(self.scroll)
         self.setLayout(self.layout)
         
-        self.button_style = """
-            QPushButton {
-                background-color: #3b3b3b;
-                color: white;
-                border: none;
-                padding: 10px;
-                min-width: 200px;
-                margin: 5px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background-color: #4b4b4b;
-            }
-        """
+        self.button_style = Styles.BUTTON
         
         self.fetch_minecraft_versions()
     
@@ -54,7 +157,7 @@ class FabricVersionDialog(QDialog):
                     self.version_layout.addWidget(btn)
         except Exception as e:
             error_label = QLabel(f"Error fetching versions: {str(e)}")
-            error_label.setStyleSheet("color: red;")
+            error_label.setStyleSheet(Styles.ERROR_LABEL)
             self.version_layout.addWidget(error_label)
 
     def show_loader_versions(self, minecraft_version):
@@ -81,7 +184,7 @@ class FabricVersionDialog(QDialog):
                 self.version_layout.addWidget(btn)
         except Exception as e:
             error_label = QLabel(f"Error fetching loader versions: {str(e)}")
-            error_label.setStyleSheet("color: red;")
+            error_label.setStyleSheet(Styles.ERROR_LABEL)
             self.version_layout.addWidget(error_label)
 
     def show_installer_versions(self, minecraft_version, loader_version):
@@ -109,7 +212,7 @@ class FabricVersionDialog(QDialog):
                     self.version_layout.addWidget(btn)
         except Exception as e:
             error_label = QLabel(f"Error fetching installer versions: {str(e)}")
-            error_label.setStyleSheet("color: red;")
+            error_label.setStyleSheet(Styles.ERROR_LABEL)
             self.version_layout.addWidget(error_label)
 
     def create_server(self, minecraft_version, loader_version, installer_version):
@@ -127,7 +230,7 @@ class FabricVersionDialog(QDialog):
             
             # Show download status
             status_label = QLabel("Downloading server jar...")
-            status_label.setStyleSheet("color: white;")
+            status_label.setStyleSheet(Styles.LABEL)
             self.version_layout.addWidget(status_label)
             
             response = requests.get(installer_url, stream=True)
@@ -160,7 +263,7 @@ class FabricVersionDialog(QDialog):
             
         except Exception as e:
             error_label = QLabel(f"Error creating server: {str(e)}")
-            error_label.setStyleSheet("color: red;")
+            error_label.setStyleSheet(Styles.ERROR_LABEL)
             self.version_layout.addWidget(error_label)
 
 class PaperVersionDialog(QDialog):
@@ -168,12 +271,12 @@ class PaperVersionDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Select Paper Version")
         self.setFixedSize(400, 400)
-        self.setStyleSheet("background-color: #2b2b2b;")
+        self.setStyleSheet(Styles.BACKGROUND)
         
         self.layout = QVBoxLayout()
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
-        self.scroll.setStyleSheet("QScrollArea { border: none; }")
+        self.scroll.setStyleSheet(Styles.SCROLL_AREA)
         
         self.container = QWidget()
         self.version_layout = QVBoxLayout(self.container)
@@ -181,20 +284,7 @@ class PaperVersionDialog(QDialog):
         self.layout.addWidget(self.scroll)
         self.setLayout(self.layout)
         
-        self.button_style = """
-            QPushButton {
-                background-color: #3b3b3b;
-                color: white;
-                border: none;
-                padding: 10px;
-                min-width: 200px;
-                margin: 5px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background-color: #4b4b4b;
-            }
-        """
+        self.button_style = Styles.BUTTON
         
         self.fetch_paper_versions()
     
@@ -210,7 +300,7 @@ class PaperVersionDialog(QDialog):
                 self.version_layout.addWidget(btn)
         except Exception as e:
             error_label = QLabel(f"Error fetching versions: {str(e)}")
-            error_label.setStyleSheet("color: red;")
+            error_label.setStyleSheet(Styles.ERROR_LABEL)
             self.version_layout.addWidget(error_label)
 
     def show_builds(self, version):
@@ -234,7 +324,7 @@ class PaperVersionDialog(QDialog):
             self.version_layout.addWidget(btn)
         except Exception as e:
             error_label = QLabel(f"Error fetching builds: {str(e)}")
-            error_label.setStyleSheet("color: red;")
+            error_label.setStyleSheet(Styles.ERROR_LABEL)
             self.version_layout.addWidget(error_label)
 
     def create_server(self, version, build):
@@ -250,7 +340,7 @@ class PaperVersionDialog(QDialog):
             jar_path = os.path.join(profile_path, "server.jar")
             
             status_label = QLabel("Downloading server jar...")
-            status_label.setStyleSheet("color: white;")
+            status_label.setStyleSheet(Styles.LABEL)
             self.version_layout.addWidget(status_label)
             
             response = requests.get(download_url, stream=True)
@@ -280,7 +370,7 @@ class PaperVersionDialog(QDialog):
             
         except Exception as e:
             error_label = QLabel(f"Error creating server: {str(e)}")
-            error_label.setStyleSheet("color: red;")
+            error_label.setStyleSheet(Styles.ERROR_LABEL)
             self.version_layout.addWidget(error_label)
 
 class VanillaVersionDialog(QDialog):
@@ -288,12 +378,12 @@ class VanillaVersionDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Select Vanilla Version")
         self.setFixedSize(400, 400)
-        self.setStyleSheet("background-color: #2b2b2b;")
+        self.setStyleSheet(Styles.BACKGROUND)
         
         self.layout = QVBoxLayout()
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
-        self.scroll.setStyleSheet("QScrollArea { border: none; }")
+        self.scroll.setStyleSheet(Styles.SCROLL_AREA)
         
         self.container = QWidget()
         self.version_layout = QVBoxLayout(self.container)
@@ -301,20 +391,7 @@ class VanillaVersionDialog(QDialog):
         self.layout.addWidget(self.scroll)
         self.setLayout(self.layout)
         
-        self.button_style = """
-            QPushButton {
-                background-color: #3b3b3b;
-                color: white;
-                border: none;
-                padding: 10px;
-                min-width: 200px;
-                margin: 5px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background-color: #4b4b4b;
-            }
-        """
+        self.button_style = Styles.BUTTON
         
         self.fetch_vanilla_versions()
     
@@ -331,7 +408,7 @@ class VanillaVersionDialog(QDialog):
                     self.version_layout.addWidget(btn)
         except Exception as e:
             error_label = QLabel(f"Error fetching versions: {str(e)}")
-            error_label.setStyleSheet("color: red;")
+            error_label.setStyleSheet(Styles.ERROR_LABEL)
             self.version_layout.addWidget(error_label)
 
     def create_server(self, version):
@@ -348,7 +425,7 @@ class VanillaVersionDialog(QDialog):
             jar_path = os.path.join(profile_path, "server.jar")
             
             status_label = QLabel("Downloading server jar...")
-            status_label.setStyleSheet("color: white;")
+            status_label.setStyleSheet(Styles.LABEL)
             self.version_layout.addWidget(status_label)
             
             response = requests.get(download_url, stream=True)
@@ -378,7 +455,7 @@ class VanillaVersionDialog(QDialog):
             
         except Exception as e:
             error_label = QLabel(f"Error creating server: {str(e)}")
-            error_label.setStyleSheet("color: red;")
+            error_label.setStyleSheet(Styles.ERROR_LABEL)
             self.version_layout.addWidget(error_label)
 
 class ServerTypeDialog(QDialog):
@@ -386,23 +463,11 @@ class ServerTypeDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Select Server Type")
         self.setFixedSize(400, 200)
-        self.setStyleSheet("background-color: #2b2b2b;")
+        self.setStyleSheet(Styles.BACKGROUND)
 
         layout = QVBoxLayout()
         
-        button_style = """
-            QPushButton {
-                background-color: #3b3b3b;
-                color: white;
-                border: none;
-                padding: 15px;
-                min-width: 150px;
-                margin: 5px;
-            }
-            QPushButton:hover {
-                background-color: #4b4b4b;
-            }
-        """
+        button_style = Styles.BUTTON
         
         # Server type buttons
         fabric_btn = QPushButton("Fabric")
@@ -439,10 +504,20 @@ class ServerControlPanel(QDialog):
         super().__init__(parent)
         self.server_path = server_path
         self.process = QProcess()
+        self.parent_window = parent
+        
+        # Register with web UI manager if parent window has one
+        if hasattr(parent, 'webui_manager'):
+            parent.webui_manager.add_server_profile(server_path, self)
+        
+        # Remove this if it exists - we don't use ServerWebUI directly anymore
+        # self.webui = ServerWebUI(server_path, self.process)
+        # self.webui.set_parent(self)
+        # self.webui.start()
         
         self.setWindowTitle(f"Server Control - {os.path.basename(server_path)}")
         self.setFixedSize(800, 600)
-        self.setStyleSheet("background-color: #2b2b2b;")
+        self.setStyleSheet(Styles.BACKGROUND)
 
         layout = QVBoxLayout()
         
@@ -450,33 +525,20 @@ class ServerControlPanel(QDialog):
         button_layout = QHBoxLayout()
         
         self.power_btn = QPushButton("⚡ Start")
-        self.power_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                padding: 10px;
-                min-width: 100px;
-            }
-            QPushButton:hover { background-color: #45a049; }
-        """)
+        self.power_btn.setStyleSheet(Styles.ACTION_BUTTON)
         self.power_btn.clicked.connect(self.toggle_server)
         
         self.config_btn = QPushButton("⚙ Config")
-        self.config_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3b3b3b;
-                color: white;
-                border: none;
-                padding: 10px;
-                min-width: 100px;
-            }
-            QPushButton:hover { background-color: #4b4b4b; }
-        """)
+        self.config_btn.setStyleSheet(Styles.CONFIG_BUTTON)
         self.config_btn.clicked.connect(self.open_config)
+        
+        self.modrinth_btn = QPushButton("🧩 Mods")
+        self.modrinth_btn.setStyleSheet(Styles.CONFIG_BUTTON)
+        self.modrinth_btn.clicked.connect(self.show_mod_dialog)
         
         button_layout.addWidget(self.power_btn)
         button_layout.addWidget(self.config_btn)
+        button_layout.addWidget(self.modrinth_btn)
         button_layout.addStretch()
         
         layout.addLayout(button_layout)
@@ -484,7 +546,7 @@ class ServerControlPanel(QDialog):
         # Add memory slider
         memory_layout = QHBoxLayout()
         memory_label = QLabel("Memory (GB):")
-        memory_label.setStyleSheet("color: white;")
+        memory_label.setStyleSheet(Styles.LABEL)
         self.memory_slider = QSlider(Qt.Horizontal)
         self.memory_slider.setMinimum(1)
         self.memory_slider.setMaximum(32)
@@ -492,7 +554,7 @@ class ServerControlPanel(QDialog):
         self.memory_slider.setTickPosition(QSlider.TicksBelow)
         self.memory_slider.setTickInterval(1)
         self.memory_value = QLabel("2")
-        self.memory_value.setStyleSheet("color: white;")
+        self.memory_value.setStyleSheet(Styles.LABEL)
         self.memory_slider.valueChanged.connect(self.update_memory_label)
         
         memory_layout.addWidget(memory_label)
@@ -505,14 +567,7 @@ class ServerControlPanel(QDialog):
         # Server console
         self.console = QTextEdit()
         self.console.setReadOnly(True)
-        self.console.setStyleSheet("""
-            QTextEdit {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                border: none;
-                font-family: monospace;
-            }
-        """)
+        self.console.setStyleSheet(Styles.CONSOLE)
         layout.addWidget(self.console)
         
         self.setLayout(layout)
@@ -524,6 +579,14 @@ class ServerControlPanel(QDialog):
         
         self.server_running = False
     
+    def start_from_web(self):
+        """Method to allow web UI to start the server"""
+        print("Server start requested from web UI")
+        if not self.server_running:
+            self.toggle_server()
+            return True
+        return False
+
     def find_java_path(self):
         """Find latest installed Java version path"""
         try:
@@ -582,16 +645,7 @@ class ServerControlPanel(QDialog):
             # Find Java path
             java_path = self.find_java_path()
             
-            self.power_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #f44336;
-                    color: white;
-                    border: none;
-                    padding: 10px;
-                    min-width: 100px;
-                }
-                QPushButton:hover { background-color: #d32f2f; }
-            """)
+            self.power_btn.setStyleSheet(Styles.STOP_BUTTON)
             self.power_btn.setText("⏹ Stop")
             
             memory = self.memory_slider.value()
@@ -599,6 +653,10 @@ class ServerControlPanel(QDialog):
             self.process.setWorkingDirectory(self.server_path)
             self.process.start(java_path, java_cmd)
             self.server_running = True
+            
+            # Update WebUI's process reference
+            if hasattr(self, 'webui'):
+                self.webui.process = self.process
         else:
             # Stop server
             self.process.write(b"stop\n")
@@ -606,23 +664,16 @@ class ServerControlPanel(QDialog):
     def handle_output(self):
         data = self.process.readAllStandardOutput().data().decode()
         self.console.append(data)
+        # No need to add anything here; the WebUI captures output via signal connections
     
     def handle_error(self):
         data = self.process.readAllStandardError().data().decode()
         self.console.append(f"<span style='color: #ff5555'>{data}</span>")
+        # No need to add anything here; the WebUI captures output via signal connections
     
     def handle_finished(self):
         self.server_running = False
-        self.power_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                padding: 10px;
-                min-width: 100px;
-            }
-            QPushButton:hover { background-color: #45a049; }
-        """)
+        self.power_btn.setStyleSheet(Styles.ACTION_BUTTON)
         self.power_btn.setText("⚡ Start")
         self.console.append("Server stopped")
     
@@ -635,14 +686,188 @@ class ServerControlPanel(QDialog):
             except Exception as e:
                 self.console.append(f"Error opening config: {str(e)}")
 
+    def show_mod_dialog(self):
+        dialog = ModrinthDialog(self.server_path, self)
+        dialog.exec_()
+
+    def __repr__(self):
+        return f"ServerControlPanel({self.server_path})"
+
+class ModrinthDialog(QDialog):
+    def __init__(self, server_path, parent=None):
+        super().__init__(parent)
+        self.server_path = server_path
+        self.setWindowTitle("Install Mods")
+        self.setFixedSize(800, 600)
+        self.setStyleSheet(Styles.BACKGROUND)
+
+        layout = QVBoxLayout()
+        
+        # Search box
+        search_layout = QHBoxLayout()
+        self.search_box = QLineEdit()
+        self.search_box.setStyleSheet("background: #333; color: white; padding: 5px;")
+        self.search_box.setPlaceholderText("Search mods...")
+        search_btn = QPushButton("Search")
+        search_btn.setStyleSheet(Styles.ACTION_BUTTON)
+        search_btn.clicked.connect(self.search_mods)
+        
+        search_layout.addWidget(self.search_box)
+        search_layout.addWidget(search_btn)
+        layout.addLayout(search_layout)
+
+        # Mod list
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet(Styles.SCROLL_AREA)
+        
+        self.mod_container = QWidget()
+        self.mod_layout = QVBoxLayout(self.mod_container)
+        scroll.setWidget(self.mod_container)
+        layout.addWidget(scroll)
+        
+        self.setLayout(layout)
+
+    def search_mods(self):
+        query = self.search_box.text()
+        try:
+            # Clear previous results
+            for i in reversed(range(self.mod_layout.count())):
+                self.mod_layout.itemAt(i).widget().deleteLater()
+                
+            # Search Modrinth API
+            headers = {
+                "User-Agent": "MinecraftServerManager/1.0"
+            }
+            params = {
+                "query": query,
+                "limit": 20,
+                "project_type": "mod"
+            }
+            response = requests.get(
+                "https://api.modrinth.com/v2/search", 
+                headers=headers,
+                params=params
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            if not data.get("hits"):
+                error = QLabel("No mods found")
+                error.setStyleSheet(Styles.LABEL)
+                self.mod_layout.addWidget(error)
+                return
+
+            for mod in data["hits"]:
+                mod_widget = QWidget()
+                mod_layout = QHBoxLayout(mod_widget)
+                
+                title = QLabel(f"<b>{mod['title']}</b><br>{mod['description']}")
+                title.setStyleSheet(Styles.LABEL)
+                title.setWordWrap(True)
+                
+                install_btn = QPushButton("Install")
+                install_btn.setStyleSheet(Styles.ACTION_BUTTON)
+                install_btn.clicked.connect(lambda checked, m=mod: self.install_mod(m))
+                
+                mod_layout.addWidget(title)
+                mod_layout.addWidget(install_btn)
+                
+                self.mod_layout.addWidget(mod_widget)
+                
+        except Exception as e:
+            error = QLabel(f"Error searching mods: {str(e)}")
+            error.setStyleSheet(Styles.ERROR_LABEL)
+            self.mod_layout.addWidget(error)
+
+    def install_mod(self, mod):
+        try:
+            # Create version selection dialog
+            version_dialog = QDialog(self)
+            version_dialog.setWindowTitle("Select Mod Version")
+            version_dialog.setFixedSize(400, 400)
+            version_dialog.setStyleSheet(Styles.BACKGROUND)
+            
+            layout = QVBoxLayout()
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setStyleSheet(Styles.SCROLL_AREA)
+            
+            container = QWidget()
+            version_layout = QVBoxLayout(container)
+            scroll.setWidget(container)
+            layout.addWidget(scroll)
+            version_dialog.setLayout(layout)
+
+            # Get all versions from Modrinth
+            version_id = mod["project_id"]
+            headers = {"User-Agent": "MinecraftServerManager/1.0"}
+            response = requests.get(
+                f"https://api.modrinth.com/v2/project/{version_id}/version",
+                headers=headers
+            )
+            versions = response.json()
+
+            # Add version buttons
+            for version in versions:
+                # Create version info text
+                version_info = (
+                    f"Version: {version['version_number']}\n"
+                    f"Game Versions: {', '.join(version['game_versions'])}\n"
+                    f"Loaders: {', '.join(version['loaders'])}"
+                )
+                
+                btn = QPushButton(version_info)
+                btn.setStyleSheet(Styles.BUTTON)
+                btn.clicked.connect(lambda checked, v=version: self.download_mod(v, mod["title"]))
+                version_layout.addWidget(btn)
+
+            version_dialog.exec_()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to get mod versions: {str(e)}")
+
+    def download_mod(self, version, mod_title):
+        try:
+            # Create mods folder if needed
+            mods_path = os.path.join(self.server_path, "mods")
+            if not os.path.exists(mods_path):
+                os.makedirs(mods_path)
+
+            # Download the mod file
+            file_url = version["files"][0]["url"]
+            file_name = version["files"][0]["filename"]
+            
+            response = requests.get(file_url, stream=True)
+            response.raise_for_status()
+            
+            with open(os.path.join(mods_path, file_name), 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    
+            QMessageBox.information(
+                self,
+                "Success",
+                f"Installed {mod_title} {version['version_number']}\n"
+                f"Game versions: {', '.join(version['game_versions'])}\n"
+                f"Loaders: {', '.join(version['loaders'])}"
+            )
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to download mod: {str(e)}")
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Minecraft Server Manager")
         self.setGeometry(100, 100, 800, 600)
         
+        # Initialize web UI manager
+        self.webui_manager = WebUIManager()
+        self.webui_manager.start()
+        
         # Set background color
-        self.setStyleSheet("background-color: #2b2b2b;")
+        self.setStyleSheet(Styles.BACKGROUND)
         
         # Central widget
         self.central_widget = QWidget()
@@ -652,7 +877,7 @@ class MainWindow(QMainWindow):
         # Create scroll area for server list
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { border: none; }")
+        scroll.setStyleSheet(Styles.SCROLL_AREA)
         
         # Container for server list
         container = QWidget()
@@ -673,19 +898,7 @@ class MainWindow(QMainWindow):
             if file.startswith('PROFILE_'):
                 server_name = file[8:]  # Remove 'PROFILE_' prefix
                 btn = QPushButton(server_name)
-                btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #3b3b3b;
-                        color: white;
-                        border: none;
-                        padding: 10px;
-                        min-width: 200px;
-                        margin: 5px;
-                    }
-                    QPushButton:hover {
-                        background-color: #4b4b4b;
-                    }
-                """)
+                btn.setStyleSheet(Styles.BUTTON)
                 # Connect button to show control panel
                 server_path = os.path.join('servers', file)
                 btn.clicked.connect(lambda checked, path=server_path: 
@@ -694,25 +907,13 @@ class MainWindow(QMainWindow):
         
         if not os.listdir('servers'):
             label = QLabel("No server profiles found")
-            label.setStyleSheet("color: white;")
+            label.setStyleSheet(Styles.LABEL)
             label.setAlignment(Qt.AlignCenter)
             self.server_layout.addWidget(label)
             
         # Add New Server button
         new_server_btn = QPushButton("+ New Server")
-        new_server_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                padding: 10px;
-                min-width: 200px;
-                margin: 15px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-        """)
+        new_server_btn.setStyleSheet(Styles.ACTION_BUTTON)
         new_server_btn.clicked.connect(self.show_server_type_dialog)
         self.server_layout.addWidget(new_server_btn)
 
