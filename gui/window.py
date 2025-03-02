@@ -9,11 +9,39 @@ import psutil
 # Add this import line for WebUIManager
 from gui.webui import WebUIManager
 
+# Make sure this is outside all classes
+web_ui_manager = None
+
+def initialize_web_ui():
+    global web_ui_manager
+    if (web_ui_manager is None):
+        print("Initializing WebUI Manager")
+        web_ui_manager = WebUIManager()
+        
+        # Connect signals to slots using Qt.QueuedConnection to ensure thread safety
+        web_ui_manager.process_handler.start_server_signal.connect(
+            web_ui_manager.process_handler.start_server,
+            type=Qt.QueuedConnection
+        )
+        web_ui_manager.process_handler.stop_server_signal.connect(
+            web_ui_manager.process_handler.stop_server,
+            type=Qt.QueuedConnection
+        )
+        web_ui_manager.process_handler.send_command_signal.connect(
+            web_ui_manager.process_handler.send_command,
+            type=Qt.QueuedConnection
+        )
+        
+        # Start the web UI server
+        web_ui_manager.start()
+        print("WebUI Manager initialized")
+    return web_ui_manager
+
 class Styles:
     # Background with SVG support
     @staticmethod
     def set_background_image(widget, image_path):
-        if image_path.lower().endswith('.svg'):
+        if (image_path.lower().endswith('.svg')):
             palette = QPalette()
             pixmap = QPixmap(image_path)
             brush = QBrush(pixmap)
@@ -505,15 +533,17 @@ class ServerControlPanel(QDialog):
         self.server_path = server_path
         self.process = QProcess()
         self.parent_window = parent
+        self.server_running = False
+        
+        # Setup process signals first
+        self.process.readyReadStandardOutput.connect(self.handle_output)
+        self.process.readyReadStandardError.connect(self.handle_error)
+        self.process.finished.connect(self.handle_finished)
         
         # Register with web UI manager if parent window has one
         if hasattr(parent, 'webui_manager'):
+            print(f"Registering server panel for {server_path} with WebUIManager")
             parent.webui_manager.add_server_profile(server_path, self)
-        
-        # Remove this if it exists - we don't use ServerWebUI directly anymore
-        # self.webui = ServerWebUI(server_path, self.process)
-        # self.webui.set_parent(self)
-        # self.webui.start()
         
         self.setWindowTitle(f"Server Control - {os.path.basename(server_path)}")
         self.setFixedSize(800, 600)
@@ -571,14 +601,65 @@ class ServerControlPanel(QDialog):
         layout.addWidget(self.console)
         
         self.setLayout(layout)
-        
-        # Setup process
-        self.process.readyReadStandardOutput.connect(self.handle_output)
-        self.process.readyReadStandardError.connect(self.handle_error)
-        self.process.finished.connect(self.handle_finished)
-        
-        self.server_running = False
     
+    def handle_output(self):
+        try:
+            data = self.process.readAllStandardOutput().data().decode('utf-8', errors='replace')
+            
+            # Update desktop UI console
+            if hasattr(self, 'console'):
+                self.console.append(data)
+            
+            # Send to web UI console if we have a parent with web UI
+            if hasattr(self.parent_window, 'webui_manager'):
+                webui = self.parent_window.webui_manager
+                if self.server_path in webui.console_buffers:
+                    for line in data.splitlines():
+                        if line.strip():  # Only add non-empty lines
+                            webui.console_buffers[self.server_path].add_line(line)
+                            # Also print for debugging
+                            print(f"Server output: {line}")
+        except Exception as e:
+            print(f"Error handling process output: {str(e)}")
+
+    def handle_error(self):
+        try:
+            data = self.process.readAllStandardError().data().decode('utf-8', errors='replace')
+            
+            # Update desktop UI console
+            if hasattr(self, 'console'):
+                self.console.append(f"<span style='color: #ff5555'>{data}</span>")
+            
+            # Send to web UI console if we have a parent with web UI
+            if hasattr(self.parent_window, 'webui_manager'):
+                webui = self.parent_window.webui_manager
+                if self.server_path in webui.console_buffers:
+                    for line in data.splitlines():
+                        if line.strip():  # Only add non-empty lines
+                            webui.console_buffers[self.server_path].add_line(f"[ERROR] {line}")
+                            # Also print for debugging
+                            print(f"Server error: {line}")
+        except Exception as e:
+            print(f"Error handling process error output: {str(e)}")
+
+    def handle_finished(self):
+        self.server_running = False
+        
+        # Update desktop UI
+        if hasattr(self, 'power_btn'):
+            self.power_btn.setStyleSheet(Styles.ACTION_BUTTON)
+            self.power_btn.setText("⚡ Start")
+        
+        # Add message to desktop UI console
+        if hasattr(self, 'console'):
+            self.console.append("Server stopped")
+        
+        # Send to web UI console if we have a parent with web UI
+        if hasattr(self.parent_window, 'webui_manager'):
+            webui = self.parent_window.webui_manager
+            if self.server_path in webui.console_buffers:
+                webui.console_buffers[self.server_path].add_line("Server stopped")
+
     def start_from_web(self):
         """Method to allow web UI to start the server"""
         print("Server start requested from web UI")
@@ -641,41 +722,98 @@ class ServerControlPanel(QDialog):
         self.memory_value.setText(str(self.memory_slider.value()))
     
     def toggle_server(self):
-        if not self.server_running:
-            # Find Java path
-            java_path = self.find_java_path()
-            
-            self.power_btn.setStyleSheet(Styles.STOP_BUTTON)
-            self.power_btn.setText("⏹ Stop")
-            
-            memory = self.memory_slider.value()
-            java_cmd = [f"-Xmx{memory}G", "-jar", "server.jar", "nogui"]
-            self.process.setWorkingDirectory(self.server_path)
-            self.process.start(java_path, java_cmd)
-            self.server_running = True
-            
-            # Update WebUI's process reference
-            if hasattr(self, 'webui'):
-                self.webui.process = self.process
-        else:
-            # Stop server
-            self.process.write(b"stop\n")
-    
-    def handle_output(self):
-        data = self.process.readAllStandardOutput().data().decode()
-        self.console.append(data)
-        # No need to add anything here; the WebUI captures output via signal connections
-    
-    def handle_error(self):
-        data = self.process.readAllStandardError().data().decode()
-        self.console.append(f"<span style='color: #ff5555'>{data}</span>")
-        # No need to add anything here; the WebUI captures output via signal connections
-    
-    def handle_finished(self):
-        self.server_running = False
-        self.power_btn.setStyleSheet(Styles.ACTION_BUTTON)
-        self.power_btn.setText("⚡ Start")
-        self.console.append("Server stopped")
+        try:
+            if not self.server_running:
+                # Find Java path
+                java_path = self.find_java_path()
+                print(f"Starting server with Java path: {java_path}")
+                
+                # Update UI if we have a power button
+                if hasattr(self, 'power_btn'):
+                    self.power_btn.setStyleSheet(Styles.STOP_BUTTON)
+                    self.power_btn.setText("⏹ Stop")
+                
+                # Get memory allocation (default to 2GB if slider doesn't exist)
+                memory = 2
+                if hasattr(self, 'memory_slider'):
+                    memory = self.memory_slider.value()
+                
+                # Ensure process is connected to signal handlers
+                # Use try/except instead of the receivers() method
+                try:
+                    self.process.readyReadStandardOutput.disconnect(self.handle_output)
+                    self.process.readyReadStandardOutput.connect(self.handle_output)
+                except TypeError:
+                    self.process.readyReadStandardOutput.connect(self.handle_output)
+                    
+                try:
+                    self.process.readyReadStandardError.disconnect(self.handle_error)
+                    self.process.readyReadStandardError.connect(self.handle_error)
+                except TypeError:
+                    self.process.readyReadStandardError.connect(self.handle_error)
+                    
+                try:
+                    self.process.finished.disconnect(self.handle_finished)
+                    self.process.finished.connect(self.handle_finished)
+                except TypeError:
+                    self.process.finished.connect(self.handle_finished)
+                    
+                java_cmd = [f"-Xmx{memory}G", "-jar", "server.jar", "nogui"]
+                
+                print(f"Setting working directory: {self.server_path}")
+                self.process.setWorkingDirectory(self.server_path)
+                
+                cmd_str = f"{java_path} {' '.join(java_cmd)}"
+                print(f"Starting process with command: {cmd_str}")
+                
+                # Add the command to both desktop UI and web UI console
+                if hasattr(self, 'console'):
+                    self.console.append(f"Executing: {cmd_str}")
+                
+                # Send to web UI console if we have a parent with web UI
+                if hasattr(self.parent_window, 'webui_manager'):
+                    webui = self.parent_window.webui_manager
+                    if self.server_path in webui.console_buffers:
+                        webui.console_buffers[self.server_path].add_line(f"Executing: {cmd_str}")
+                
+                # Start the server
+                self.process.start(java_path, java_cmd)
+                
+                self.server_running = True
+                print(f"Server marked as running: {self.server_path}")
+                
+                return True
+            else:
+                # Stop server
+                print(f"Stopping server: {self.server_path}")
+                if hasattr(self, 'process') and self.process:
+                    # Send stop command to server
+                    stop_cmd = "stop\n"
+                    self.process.write(stop_cmd.encode('utf-8'))
+                    
+                    # Update desktop UI console
+                    if hasattr(self, 'console'):
+                        self.console.append("Stopping server...")
+                    
+                    # Send to web UI console if we have a parent with web UI
+                    if hasattr(self.parent_window, 'webui_manager'):
+                        webui = self.parent_window.webui_manager
+                        if self.server_path in webui.console_buffers:
+                            webui.console_buffers[self.server_path].add_line("Stopping server...")
+                    
+                    self.server_running = False
+                    
+                    # Update UI if we have a power button
+                    if hasattr(self, 'power_btn'):
+                        self.power_btn.setStyleSheet(Styles.ACTION_BUTTON)
+                        self.power_btn.setText("⚡ Start")
+                        
+                    return True
+        except Exception as e:
+            print(f"Error in toggle_server: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
     
     def open_config(self):
         config_path = os.path.join(self.server_path, "server.properties")
@@ -863,8 +1001,16 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
         
         # Initialize web UI manager
-        self.webui_manager = WebUIManager()
-        self.webui_manager.start()
+        self.webui_manager = initialize_web_ui()
+        
+        # Make sure to add all existing server profiles
+        if os.path.exists('servers'):
+            for file in os.listdir('servers'):
+                if file.startswith('PROFILE_'):
+                    server_path = os.path.join('servers', file)
+                    # Create a minimal control panel object for each server
+                    control_panel = self.create_minimal_panel(server_path)
+                    self.webui_manager.add_server_profile(server_path, control_panel)
         
         # Set background color
         self.setStyleSheet(Styles.BACKGROUND)
@@ -934,3 +1080,11 @@ class MainWindow(QMainWindow):
     def show_server_control(self, server_path):
         dialog = ServerControlPanel(server_path, self)
         dialog.show()
+    
+    def create_minimal_panel(self, server_path):
+        """
+        Create a minimal panel object to represent a server
+        that hasn't been opened yet in the GUI
+        """
+        panel = ServerControlPanel(server_path, self)
+        return panel

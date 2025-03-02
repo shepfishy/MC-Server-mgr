@@ -1,30 +1,58 @@
-# MC-Server-mgr 0.9
+# MC-Server-mgr 1.9
 <img src="logo/complete.svg" width="250"/>
 
-### A python Qt5 application to manage, start and customise local minecraft servers
+## A Python Qt5 Application for Managing Minecraft Servers
 
-On server creation with the tool. You can click on the "⚙ Config" button to open ```server.properties``` before starting the server.
+MC-Server-mgr provides a simple graphical interface to create, configure, and manage local Minecraft servers.
 
-```
-server-port=25565
-difficulty=normal
-max-players=20
-view-distance=10
-```
+### Features:
+- Create new server instances for Vanilla, Paper, and Fabric
+- Configure server settings through the GUI
+- Allocate custom memory to server instances
+- Browse and install mods directly from Modrinth
+- Monitor server performance and logs
+- Web UI for remote server management
+- Automatic Java detection
 
-**Tested with openjdk-21 on Zorin OS 17.2 amd Windows 10 Home 22H2**
+### System Requirements:
+- Python 3.6+
+- PyQt5
+- OpenJDK 17+ (Java)
+- 4GB+ RAM recommended
 
-**Supports all Fabric, Paper, and Vanilla versions Minecraft**
+### Tested On:
+- Zorin OS 17.2 (Linux)
+- Windows 10 Home 22H2
 
-### To do:
-- [x] .
-- [x] ..
-- [X] ...
-- [X] ....
-- [x] Logic to find and use lastest java version installed when executing the jar file
-- [x] Remake the code that handles launching the jar file to allow for variable memory allocation
-- [x] Make windows version
-- [ ] Add modrinth support
-- [ ] Add web ui
- 
-# When using this application please follow the [Minecraft Eula](https://www.minecraft.net/en-us/eula) (End user liscense agreement)
+### Getting Started:
+1. Clone the repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Run the application: `python app.py`
+4. Create a new server profile or open an existing one
+5. Configure server properties
+
+### Web Interface:
+Access the web UI at http://localhost:8080 to:
+- View active server profiles
+- Start/stop servers
+- Access the console
+- Edit configuration files
+
+### Recent Updates:
+- Added web UI for remote management
+- Improved Modrinth integration
+- Enhanced memory allocation controls
+- Added automatic Java version detection
+- Multi-platform support (Windows/Linux)
+
+### License:
+This application is provided as open source software. When using it to run Minecraft servers, you must adhere to the [Minecraft EULA](https://www.minecraft.net/en-us/eula).
+
+## Screenshots:
+### WebGUI
+<img src="webgui1.png" width="600"/>
+<img src="webgui2.png" width="600"/>
+
+### AppGUI
+<img src="appgui1.png" width="600"/>
+<img src="appgui2.png" width="600"/>
