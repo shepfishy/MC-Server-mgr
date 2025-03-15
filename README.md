@@ -45,7 +45,8 @@ Access the web UI at http://localhost:8080 to:
 - Added automatic Java version detection
 - Multi-platform support (Windows/Linux)
 
-### License:
+### License - MIT Liscense
+
 This application is provided as open source software. When using it to run Minecraft servers, you must adhere to the [Minecraft EULA](https://www.minecraft.net/en-us/eula).
 
 ## Screenshots:
